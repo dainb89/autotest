@@ -11,17 +11,131 @@ android {
         versionCode 1
         versionName "1.0"
     }
+
     buildTypes {
+        debug {
+            debuggable true
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            testCoverageEnabled true
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            testCoverageEnabled false
         }
+    }
+
+    productFlavors {
+        unitTest //  Creates a new scope which wraps only unit tests
+    }
+
+    sourceSets {
+        unitTest {
+            java {
+                srcDir 'src/test/java' // New scope includes our unit test folder
+            }
+        }
+    }
+
+    // Prevent conflicts between Robolectric's dependencies
+    packagingOptions {
+        exclude 'META-INF/DEPENDENCIES.txt'
+        exclude 'META-INF/LICENSE.txt'
+        exclude 'META-INF/NOTICE.txt'
+        exclude 'META-INF/NOTICE'
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/DEPENDENCIES'
+        exclude 'META-INF/notice.txt'
+        exclude 'META-INF/license.txt'
+        exclude 'META-INF/dependencies.txt'
+        exclude 'META-INF/LGPL2.1'
+        exclude 'LICENSE.txt'
+        exclude 'LICENSE'
+    }
+
+    lintOptions {
+        // I prefer avoiding a build fail if there is any warning, for they are only warnings
+        abortOnError false
     }
 }
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
-    testCompile 'junit:junit:4.12'
+//    testCompile 'junit:junit:4.12'                    // conflicts with Robolectric
     compile 'com.android.support:appcompat-v7:24.1.1'
     compile 'com.android.support:design:24.1.1'
+
+    // Espresso
+    androidTestCompile 'com.android.support.test.espresso:espresso-core:2.0'
+    androidTestCompile 'com.android.support.test:testing-support-lib:0.1'
+
+    // Unit testing dependencies
+    unitTestCompile('junit:junit:4.12') { // Prevent duplication conflicts
+        exclude module: 'hamcrest-core'
+        exclude module: 'hamcrest-library'
+        exclude module: 'hamcrest-integration'
+    }
+    unitTestCompile 'org.hamcrest:hamcrest-core:1.1'
+    unitTestCompile 'org.hamcrest:hamcrest-library:1.1'
+    unitTestCompile 'org.hamcrest:hamcrest-integration:1.1'
+
+    unitTestCompile('org.robolectric:robolectric:2.4') {
+        exclude module: 'classworlds'
+        exclude module: 'commons-logging'
+        exclude module: 'httpclient'
+        exclude module: 'maven-artifact'
+        exclude module: 'maven-artifact-manager'
+        exclude module: 'maven-error-diagnostics'
+        exclude module: 'maven-model'
+        exclude module: 'maven-project'
+        exclude module: 'maven-settings'
+        exclude module: 'plexus-container-default'
+        exclude module: 'plexus-interpolation'
+        exclude module: 'plexus-utils'
+        exclude module: 'wagon-file'
+        exclude module: 'wagon-http-lightweight'
+        exclude module: 'wagon-provider-api'
+    }
 }
+
+// Jacoco config
+apply plugin: 'jacoco'
+
+jacoco {
+    // Use this version for upper ones are broken (with Gradle)
+    // https://github.com/jacoco/jacoco/issues/288
+    toolVersion = "0.7.1.201405082137"
+}
+
+// Edit covered scope if needed
+// For my part I like having the coverage of both application and tests
+def coverageSourceDirs = [
+        '../app/src'
+]
+
+task jacocoTestReport(type: JacocoReport, dependsOn: "test") {
+    group = "Reporting"
+
+    description = "Generate Jacoco coverage reports"
+
+    classDirectories = fileTree(
+            dir: '../app/build/intermediates/classes',
+            excludes: ['**/R.class',
+                       '**/R$*.class',
+                       '**/*$ViewInjector*.*',
+                       '**/BuildConfig.*',
+                       '**/Manifest*.*']
+    )
+
+    additionalSourceDirs = files(coverageSourceDirs)
+    sourceDirectories = files(coverageSourceDirs)
+    executionData = files('../app/build/jacoco/testUnitTestDebug.exec')
+
+    reports {
+        xml.enabled = true
+        html.enabled = true
+    }
+
+}
+//end Jacoco config
