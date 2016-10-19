@@ -20,6 +20,7 @@ public class UserTest {
         u.setName("foo");
 
         Assert.assertEquals("foo", u.getName());
+        Assert.assertEquals("dai", u.getName());
 
     }
 
